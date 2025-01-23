@@ -33,7 +33,7 @@ To run the server with glog messages:
     GLOG_logtostderr=1 ./tsd <-p port>
 
 
-To run the client without glog messages (port number and host address are optional), you need to open another terminal window, and enter into thr launched container: 
+To run the client (port number and host address are optional), you need to open another terminal window, and enter into the launched docker container: 
 
     docker exec -it csce438_container bash
     cd mp1_skeleton
