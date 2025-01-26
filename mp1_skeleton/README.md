@@ -1,9 +1,9 @@
 
 # Pull the docker image and launch a docker container
 
-Start a new terminal window to download and use a docker image with all environments setup for you:
+Start a new terminal window to download and use a docker image with all environments setup for you (use sudo if docker commands ask for permission):
 
-    git clone git@github.com:LENSS/csce438-spring2025.git
+    git clone https://github.com/LENSS/csce438-spring2025.git
 
     cd csce438-spring2025
 
