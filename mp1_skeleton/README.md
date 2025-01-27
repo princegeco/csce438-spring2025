@@ -54,9 +54,9 @@ Warning!!! For MP3, you have to use docker on an x86 machine. If you don't have 
 
 ### Solution 1 (if you still want to use docker for MP 1, MP2.1, MP2.2): inside ubuntu, build the docker image from scratch
 
-    docker build -t csce438_env .
+    docker build --platform linux/arm64 -t csce438_env .
 
-    docker run -it --name csce438_container -v $(pwd)/mp1_skeleton:/home/csce438/mp1_skeleton liuyidockers/csce438_env:latest
+    docker run -it --name csce438_container -v $(pwd)/mp1_skeleton:/home/csce438/mp1_skeleton csce438_env
 
     ./setup-438-env.sh
 
