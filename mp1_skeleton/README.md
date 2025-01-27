@@ -76,6 +76,6 @@ Warning!!! For MP3, you have to use docker on an x86 machine. If you don't have 
 
 ## 3.2 Problem regarding starting Ubuntu virtual machine in VirtualBox on Windows computers
 
-You may encounter the "NtCreateFile(\Device\VboxDrvStub) failed" shown in the figure below. Please see if this [youtube video](https://www.youtube.com/watch?v=9FYREN6UPsM) helps.
+You may encounter the "NtCreateFile(\Device\VboxDrvStub) failed" shown in the figure below. Please see if this [youtube video](https://www.youtube.com/watch?v=9FYREN6UPsM) helps. You may have to reboot your windows computer in the middle of the youtube solution.
 
 ![virtualbox NtCreateFile](../images/virtualbox_NtCreateFile_Issue.png)
