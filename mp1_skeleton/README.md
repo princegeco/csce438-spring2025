@@ -72,3 +72,10 @@ Warning!!! For MP3, you have to use docker on an x86 machine. If you don't have 
 
     `./setup-438-env.sh`
 4. Your environment should be set up now. Go to skeleton code folder: `cd mp1_skeleton` and `make -j4`
+
+
+## 3.2 Problem regarding starting Ubuntu virtual machine in VirtualBox on Windows computers
+
+You may encounter the "NtCreateFile(\Device\VboxDrvStub) failed" shown in the figure below. Please see if this [youtube video](https://www.youtube.com/watch?v=9FYREN6UPsM) helps.
+
+![virtualbox NtCreateFile](../images/virtualbox_NtCreateFile_Issue.png)
