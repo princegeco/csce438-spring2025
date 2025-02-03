@@ -47,7 +47,7 @@ To run the server with glog messages:
 
 ## 3.1 Problem regarding pulling docker images or launching docker containers for Mac M1/M2
 
-We don't have a Mac M1/M2 laptop, so we can only say, in principle, the following solutions should work for your Mac M1/M2. 
+We don't have a Mac M1/M2 laptop. From our experiences, in principle, the following solutions should work for your Mac M1/M2.
 
 Warning!!! For MP3, you have to use docker on an x86 machine. If you don't have an x86 machine for MP3, we have 1-2 x86 ubuntu desktops in our lab for you to use. But it requires you physically sit in our lab to use them (i.e., you cannot take them home). Please let us know if you need to use them.
 
