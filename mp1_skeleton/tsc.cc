@@ -36,6 +36,23 @@ Message MakeMessage(const std::string& username, const std::string& msg) {
     return m;
 }
 
+IStatus processReply(const Reply& reply) {
+  if (reply.msg() == "SUCCESS") {
+    return SUCCESS;
+  } else if (reply.msg() == "FAILURE_ALREADY_EXISTS") {
+    return FAILURE_ALREADY_EXISTS;
+  } else if (reply.msg() == "FAILURE_NOT_EXISTS") {
+    return FAILURE_NOT_EXISTS;
+  } else if (reply.msg() == "FAILURE_INVALID_USERNAME") {
+    return FAILURE_INVALID_USERNAME;
+  } else if (reply.msg() == "FAILURE_NOT_A_FOLLOWER") {
+    return FAILURE_NOT_A_FOLLOWER;
+  } else if (reply.msg() == "FAILURE_INVALID") {
+    return FAILURE_INVALID;
+  } else {
+    return FAILURE_UNKNOWN;
+  }
+}
 
 class Client : public IClient
 {
@@ -75,17 +92,27 @@ int Client::connectTo()
 {
   // ------------------------------------------------------------
   // In this function, you are supposed to create a stub so that
-  // you call service methods in the processCommand/porcessTimeline
+  // you call service methods in the processCommand/processTimeline
   // functions. That is, the stub should be accessible when you want
   // to call any service methods in those functions.
   // Please refer to gRpc tutorial how to create a stub.
   // ------------------------------------------------------------
     
-///////////////////////////////////////////////////////////
-// YOUR CODE HERE
-//////////////////////////////////////////////////////////
+  // Construct server address
+  std::string server_address = hostname + ":" + port;
+  // Create a gRPC channel to the server
+  auto channel = grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials());
+  // Instantiate the stub using the created channel
+  stub_ = SNSService::NewStub(channel);
 
-    return 1;
+  // Attempt to log in immediately after creating the stub
+  IReply ire = Login();
+  if (ire.comm_status != SUCCESS) {
+    return -1; // Indicate failure to connect & log in
+  }
+
+  // Return success
+  return 1;
 }
 
 IReply Client::processCommand(std::string& input)
@@ -102,7 +129,7 @@ IReply Client::processCommand(std::string& input)
   // LIST
   // TIMELINE
   // ------------------------------------------------------------
-  
+
   // ------------------------------------------------------------
   // GUIDE 2:
   // Then, you should create a variable of IReply structure
@@ -135,11 +162,28 @@ IReply Client::processCommand(std::string& input)
   // "following_users" member variable of IReply.
   // ------------------------------------------------------------
 
+    // Declare variables
     IReply ire;
-    
-    /*********
-    YOUR CODE HERE
-    **********/
+    std::istringstream iss(input);
+    std::string cmd, username2;
+    iss >> cmd;
+
+    // Process commands
+    if (cmd == "LIST") {
+      ire = List();
+    } else if (cmd == "FOLLOW" || cmd == "UNFOLLOW") {
+      iss >> username2;
+      if (cmd == "FOLLOW") {
+        ire = Follow(username2);
+      } else { // UNFOLLOW
+        ire = UnFollow(username2);
+      }
+    } else if (cmd == "TIMELINE") {
+      processTimeline();
+    } else {
+      ire.grpc_status = Status::OK;
+      ire.comm_status = FAILURE_INVALID;
+    }
 
     return ire;
 }
@@ -153,75 +197,152 @@ void Client::processTimeline()
 // List Command
 IReply Client::List() {
 
-    IReply ire;
+  // Declare variables
+  IReply ire;
+  ClientContext context;
+  Request request;
+  ListReply list_reply;
+  Status status;
 
-    /*********
-    YOUR CODE HERE
-    **********/
+  // Set up and send request to server
+  request.set_username(username);  
+  status = stub_->List(&context, request, &list_reply);
 
-    return ire;
+  // Populate iReply structure
+  ire.grpc_status = status;
+  ire.comm_status = SUCCESS;
+  if (status.ok()) {
+    ire.all_users.assign(list_reply.all_users().begin(), list_reply.all_users().end());
+    ire.followers.assign(list_reply.followers().begin(), list_reply.followers().end());
+  }
+
+  return ire;
 }
 
 // Follow Command        
 IReply Client::Follow(const std::string& username2) {
 
-    IReply ire; 
-      
-    /***
-    YOUR CODE HERE
-    ***/
+  // Declare variables
+  IReply ire;
+  ClientContext context;
+  Request request;
+  Reply reply;
+  Status status;
+    
+  // Set up and send request to server
+  request.set_username(username);
+  request.add_arguments(username2);
+  status = stub_->Follow(&context, request, &reply);
 
-    return ire;
+  // Populate iReply structure
+  ire.grpc_status = status;
+  ire.comm_status = processReply(reply);
+
+  return ire;
 }
 
 // UNFollow Command  
 IReply Client::UnFollow(const std::string& username2) {
 
-    IReply ire;
+  // Declare variables
+  IReply ire;
+  ClientContext context;
+  Request request;
+  Reply reply;
+  Status status;
 
-    /***
-    YOUR CODE HERE
-    ***/
+  // Set up and send request to server
+  request.set_username(username);
+  request.add_arguments(username2);
+  status = stub_->UnFollow(&context, request, &reply);
 
-    return ire;
+  // Populate iReply structure
+  ire.grpc_status = status;
+  ire.comm_status = processReply(reply);
+
+  return ire;
 }
 
 // Login Command  
 IReply Client::Login() {
 
-    IReply ire;
-  
-    /***
-     YOUR CODE HERE
-    ***/
+  // Declare variables
+  IReply ire;
+  ClientContext context;
+  Request request;
+  Reply reply;
+  Status status;
 
-    return ire;
+  // Set up and send request to server
+  request.set_username(username);
+  status = stub_->Login(&context, request, &reply);
+
+  // Populate iReply structure
+  ire.grpc_status = status;
+  ire.comm_status = processReply(reply);
+
+  return ire;
 }
 
 // Timeline Command
 void Client::Timeline(const std::string& username) {
 
-    // ------------------------------------------------------------
-    // In this function, you are supposed to get into timeline mode.
-    // You may need to call a service method to communicate with
-    // the server. Use getPostMessage/displayPostMessage functions 
-    // in client.cc file for both getting and displaying messages 
-    // in timeline mode.
-    // ------------------------------------------------------------
+  // ------------------------------------------------------------
+  // In this function, you are supposed to get into timeline mode.
+  // You may need to call a service method to communicate with
+  // the server. Use getPostMessage/displayPostMessage functions 
+  // in client.cc file for both getting and displaying messages 
+  // in timeline mode.
+  // ------------------------------------------------------------
 
-    // ------------------------------------------------------------
-    // IMPORTANT NOTICE:
-    //
-    // Once a user enter to timeline mode , there is no way
-    // to command mode. You don't have to worry about this situation,
-    // and you can terminate the client program by pressing
-    // CTRL-C (SIGINT)
-    // ------------------------------------------------------------
+  // ------------------------------------------------------------
+  // IMPORTANT NOTICE:
+  //
+  // Once a user enter to timeline mode , there is no way
+  // to command mode. You don't have to worry about this situation,
+  // and you can terminate the client program by pressing
+  // CTRL-C (SIGINT)
+  // ------------------------------------------------------------
+  std::cout << "Command completed successfully\n";
+  std::cout << "Now you are in the timeline\n";
+
+  ClientContext context;
+  std::shared_ptr<ClientReaderWriter<Message, Message>> stream(
+      stub_->Timeline(&context));
+
+  // Write initial message to identify user
+  Message init_m = MakeMessage(username, "");
+  stream->Write(init_m);
+
+  // Start thread for reading incoming messages
+  std::thread reader([&]() {
+      Message server_msg;
+      while (stream->Read(&server_msg)) {
+        std::time_t time = server_msg.timestamp().seconds();
+        displayPostMessage(server_msg.username(),
+                            server_msg.msg(), time);
+      }
+  });
   
-    /***
-    YOUR CODE HERE
-    ***/
+  // Start thread for writing messages
+  std::thread writer([&]() {
+    while (1) {
+      // Prepare message
+      std::string msg = getPostMessage();
+      Message m = MakeMessage(username, msg);
+      // Send message 
+      stream->Write(m);
+    }
+    stream->WritesDone();
+  });
 
+  reader.join();
+  writer.join();
+
+  Status status = stream->Finish();
+  if (!status.ok()) {
+      std::cerr << "Timeline RPC failed." << std::endl;
+  }
 }
 
 

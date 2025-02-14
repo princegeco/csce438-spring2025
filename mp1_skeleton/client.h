@@ -33,8 +33,8 @@ enum IStatus
  * IReply ireply;
  * ireply.grpc_status = return value of a service method
  * ireply.comm_status = one of values in IStatus enum
- * reply.users = list of all users who connected to the server at least onece
- * reply.followers = list of users who following current user;
+ * ireply.users = list of all users who connected to the server at least once
+ * ireply.followers = list of users who following current user;
  *
  * This structure is not for communicating between server and client.
  * You need to design your own rules for the communication.

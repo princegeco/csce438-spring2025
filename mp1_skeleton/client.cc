@@ -42,17 +42,22 @@ std::string IClient::getCommand() const
     if (index != std::string::npos) {
       std::string cmd = input.substr(0, index);
       toUpperCase(cmd);
+      // Add an extra check to ensure the right command is received
+      if (cmd != "FOLLOW" && cmd != "UNFOLLOW") {
+        std::cout << "Invalid Input -- Only FOLLOW and UNFOLLOW commands have Arguments\n";
+        continue;
+      }
       if(input.length() == index+1){
-	std::cout << "Invalid Input -- No Arguments Given\n";
-	continue;
+        std::cout << "Invalid Input -- No Arguments Given\n";
+        continue;
       }
       std::string argument = input.substr(index+1, (input.length()-index));
       input = cmd + " " + argument;
     } else {
       toUpperCase(input);
       if (input != "LIST" && input != "TIMELINE") {
-	std::cout << "Invalid Command\n";
-	continue;
+        std::cout << "Invalid Command\n";
+        continue;
       }
     }
     break;
@@ -64,41 +69,41 @@ void IClient::displayCommandReply(const std::string& comm, const IReply& reply) 
 {
   if (reply.grpc_status.ok()) {
     switch (reply.comm_status) {
-    case SUCCESS:
-      std::cout << "Command completed successfully\n";
-      if (comm == "LIST") {
-	std::cout << "All users: ";
-	for (std::string room : reply.all_users) {
-	  std::cout << room << ", ";
-	}
-	std::cout << "\nFollowers: ";
-	for (std::string room : reply.followers) {
-	  std::cout << room << ", ";
-	}
-	std::cout << std::endl;
-      }
-      break;
-    case FAILURE_ALREADY_EXISTS:
-      std::cout << "Input username already exists, command failed\n";
-      break;
-    case FAILURE_NOT_EXISTS:
-      std::cout << "Input username does not exists, command failed\n";
-      break;
-    case FAILURE_INVALID_USERNAME:
-      std::cout << "Command failed with invalid username\n";
-      break;
-    case FAILURE_NOT_A_FOLLOWER:
-      std::cout << "Command failed with not a follower\n";
-      break;     
-    case FAILURE_INVALID:
-      std::cout << "Command failed with invalid command\n";
-      break;
-    case FAILURE_UNKNOWN:
-      std::cout << "Command failed with unknown reason\n";
-      break;
-    default:
-      std::cout << "Invalid status\n";
-      break;
+      case SUCCESS:
+        std::cout << "Command completed successfully\n";
+        if (comm == "LIST") {
+          std::cout << "All users: ";
+          for (std::string room : reply.all_users) {
+            std::cout << room << ", ";
+          }
+          std::cout << "\nFollowers: ";
+          for (std::string room : reply.followers) {
+            std::cout << room << ", ";
+          }
+          std::cout << std::endl;
+        }
+        break;
+      case FAILURE_ALREADY_EXISTS:
+        std::cout << "Input username already exists, command failed\n";
+        break;
+      case FAILURE_NOT_EXISTS:
+        std::cout << "Input username does not exists, command failed\n";
+        break;
+      case FAILURE_INVALID_USERNAME:
+        std::cout << "Command failed with invalid username\n";
+        break;
+      case FAILURE_NOT_A_FOLLOWER:
+        std::cout << "Command failed with not a follower\n";
+        break;     
+      case FAILURE_INVALID:
+        std::cout << "Command failed with invalid command\n";
+        break;
+      case FAILURE_UNKNOWN:
+        std::cout << "Command failed with unknown reason\n";
+        break;
+      default:
+        std::cout << "Invalid status\n";
+        break;
     }
   } else {
     std::cout << "grpc failed: " << reply.grpc_status.error_message() << std::endl;
