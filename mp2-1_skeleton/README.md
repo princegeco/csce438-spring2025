@@ -1,6 +1,6 @@
 # 1. create a docker container with the same environment of MP1
 
-First of all, copy your the folder of your MP1 with a name mp2_1. Copy the 3 source code files to the mp2_1 folder: `coordinator.cc`, `coordinator.proto`, `Makefile`.
+First of all, copy your the folder of your MP1 to a new folder named `mp2_1`. Copy the 3 source code files to the `mp2_1` folder: `coordinator.cc`, `coordinator.proto`, `Makefile`.
 
 Launch a container `csce438_mp2_1_container` with the same environment of MP1
 
@@ -10,7 +10,7 @@ Launch a container `csce438_mp2_1_container` with the same environment of MP1
 
 # 2. try using coordinator:
 
-Compile the code using the provided mp2.1 makefile:
+Compile the code (coordinator + your MP1) using the provided mp2.1 makefile:
 
     make -j4
 
