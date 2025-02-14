@@ -8,3 +8,6 @@ Teaching Assistant: [Liuyi Jin](https://www.liuyijin.com/), email: liuyi@tamu.ed
 
 ### 1.  12:00 PM, Jan 24 2025, MP1 is released!
 MP1 due: 11:59 PM, Feb 13 2025
+
+### 2.  12:00 AM, Feb 14 2025, MP2.1 is released!
+MP2.1 due: 11:59 PM, Mar 06 2025
