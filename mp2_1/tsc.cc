@@ -6,15 +6,26 @@
 #include <unistd.h>
 #include <csignal>
 #include <grpc++/grpc++.h>
+#include<glog/logging.h>
+#define log(severity, msg) LOG(severity) << msg; google::FlushLogFiles(google::severity);
+
 #include "client.h"
 
-#include "sns.grpc.pb.h"
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::ClientReader;
 using grpc::ClientReaderWriter;
 using grpc::ClientWriter;
 using grpc::Status;
+
+// Coodinator Communication
+#include "coordinator.grpc.pb.h"
+using csce438::ID;
+using csce438::ServerInfo;
+using csce438::CoordService;
+
+// Server Communication
+#include "sns.grpc.pb.h"
 using csce438::Message;
 using csce438::ListReply;
 using csce438::Request;
@@ -57,10 +68,10 @@ IStatus processReply(const Reply& reply) {
 class Client : public IClient
 {
 public:
-  Client(const std::string& hname,
-	 const std::string& uname,
-	 const std::string& p)
-    :hostname(hname), username(uname), port(p) {}
+  Client(const std::string& cIP,
+	 const std::string& cPort,
+	 const std::string& uId)
+    :coordinatorIP(cIP), coordinatorPort(cPort), userId(uId) {}
 
   
 protected:
@@ -69,13 +80,18 @@ protected:
   virtual void processTimeline();
 
 private:
-  std::string hostname;
-  std::string username;
-  std::string port;
+  std::string coordinatorIP;
+  std::string coordinatorPort;
+  std::string userId;
   
-  // You can have an instance of the client stub
-  // as a member variable.
-  std::unique_ptr<SNSService::Stub> stub_;
+  // You can have an instance of coordinator 
+  // and server stub
+  // as member variables.
+  std::unique_ptr<CoordService::Stub> coordinator_stub_;
+  std::unique_ptr<SNSService::Stub> server_stub_;
+
+  // Login Helper Function
+  IReply ServerLogin();
   
   IReply Login();
   IReply List();
@@ -97,20 +113,19 @@ int Client::connectTo()
   // to call any service methods in those functions.
   // Please refer to gRpc tutorial how to create a stub.
   // ------------------------------------------------------------
-    
-  // Construct server address
-  std::string server_address = hostname + ":" + port;
-  // Create a gRPC channel to the server
-  auto channel = grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials());
+  // Construct coordinator address
+  std::string coordinator_address = coordinatorIP + ":" + coordinatorPort;
+  // Create a gRPC channel to the coordinator
+  auto channel = grpc::CreateChannel(coordinator_address, 
+    grpc::InsecureChannelCredentials());
   // Instantiate the stub using the created channel
-  stub_ = SNSService::NewStub(channel);
-
+  coordinator_stub_ = CoordService::NewStub(channel);
   // Attempt to log in immediately after creating the stub
   IReply ire = Login();
   if (ire.comm_status != SUCCESS) {
     return -1; // Indicate failure to connect & log in
   }
-
+  log(INFO, "Successfully logged into TinySNS server");
   // Return success
   return 1;
 }
@@ -179,7 +194,12 @@ IReply Client::processCommand(std::string& input)
         ire = UnFollow(username2);
       }
     } else if (cmd == "TIMELINE") {
+      // Do not allow processTimeline() to be executed from client.cc
+      // Instead, if processTimeline returns, set the IReply to indicate failure
+      // and return it to client.cc
       processTimeline();
+      ire.grpc_status = Status::OK;
+      ire.comm_status = FAILURE_UNKNOWN;
     } else {
       ire.grpc_status = Status::OK;
       ire.comm_status = FAILURE_INVALID;
@@ -191,7 +211,7 @@ IReply Client::processCommand(std::string& input)
 
 void Client::processTimeline()
 {
-    Timeline(username);
+    Timeline(userId);
 }
 
 // List Command
@@ -205,16 +225,23 @@ IReply Client::List() {
   Status status;
 
   // Set up and send request to server
-  request.set_username(username);  
-  status = stub_->List(&context, request, &list_reply);
+  request.set_username(userId);
+  status = server_stub_->List(&context, request, &list_reply);
+
+  // Return error if request fails
+  if (!status.ok()) {
+    log(WARNING, "[List]: request failed: " + status.error_message());
+    ire.grpc_status = Status::OK; // refer to displayCommandReply() in client.cc
+    ire.comm_status = FAILURE_UNKNOWN;
+    return ire;
+  }
 
   // Populate iReply structure
+  log(INFO, "[List]: request succeeded: ");
   ire.grpc_status = status;
   ire.comm_status = SUCCESS;
-  if (status.ok()) {
-    ire.all_users.assign(list_reply.all_users().begin(), list_reply.all_users().end());
-    ire.followers.assign(list_reply.followers().begin(), list_reply.followers().end());
-  }
+  ire.all_users.assign(list_reply.all_users().begin(), list_reply.all_users().end());
+  ire.followers.assign(list_reply.followers().begin(), list_reply.followers().end());
 
   return ire;
 }
@@ -230,9 +257,17 @@ IReply Client::Follow(const std::string& username2) {
   Status status;
     
   // Set up and send request to server
-  request.set_username(username);
+  request.set_username(userId);
   request.add_arguments(username2);
-  status = stub_->Follow(&context, request, &reply);
+  status = server_stub_->Follow(&context, request, &reply);
+
+  // Return error if request fails
+  if (!status.ok()) {
+    log(WARNING, "[Follow]: request failed: " + status.error_message());
+    ire.grpc_status = Status::OK; // refer to displayCommandReply() in client.cc
+    ire.comm_status = FAILURE_UNKNOWN;
+    return ire;
+  }
 
   // Populate iReply structure
   ire.grpc_status = status;
@@ -252,9 +287,17 @@ IReply Client::UnFollow(const std::string& username2) {
   Status status;
 
   // Set up and send request to server
-  request.set_username(username);
+  request.set_username(userId);
   request.add_arguments(username2);
-  status = stub_->UnFollow(&context, request, &reply);
+  status = server_stub_->UnFollow(&context, request, &reply);
+
+  // Return error if request fails
+  if (!status.ok()) {
+    log(WARNING, "[UnFollow]: request failed: " + status.error_message());
+    ire.grpc_status = Status::OK; // refer to displayCommandReply() in client.cc
+    ire.comm_status = FAILURE_UNKNOWN;
+    return ire;
+  }
 
   // Populate iReply structure
   ire.grpc_status = status;
@@ -263,9 +306,8 @@ IReply Client::UnFollow(const std::string& username2) {
   return ire;
 }
 
-// Login Command  
-IReply Client::Login() {
-
+/* Login Helper */
+IReply Client::ServerLogin() {
   // Declare variables
   IReply ire;
   ClientContext context;
@@ -274,14 +316,55 @@ IReply Client::Login() {
   Status status;
 
   // Set up and send request to server
-  request.set_username(username);
-  status = stub_->Login(&context, request, &reply);
+  request.set_username(userId);
+  status = server_stub_->Login(&context, request, &reply);
+
+  // Return error if request fails
+  if (!status.ok()) {
+    log(WARNING, "[Login]: request failed: " + status.error_message());
+    ire.grpc_status = Status::OK; // refer to displayCommandReply() in client.cc
+    ire.comm_status = FAILURE_UNKNOWN;
+    return ire;
+  }
 
   // Populate iReply structure
   ire.grpc_status = status;
   ire.comm_status = processReply(reply);
 
   return ire;
+}
+
+
+// Login Command  
+IReply Client::Login() {
+
+  log(INFO, "[Login]: reaching out to coordinator...");
+
+  // Declare variables
+  ClientContext context;
+  ID id;
+  ServerInfo server_info;
+  Status status;
+
+  // Set up and send request to server
+  id.set_id(std::stoi(userId));
+  status = coordinator_stub_->GetServer(&context, id, &server_info);
+
+  // Create server stub if connection is successful
+  if (status.ok() && server_info.serverid() != -1) {
+    std::string server_address = server_info.hostname() + ":" + server_info.port();
+    auto channel = grpc::CreateChannel(server_address, 
+      grpc::InsecureChannelCredentials());
+    server_stub_ = SNSService::NewStub(channel);
+  } else {
+    log(WARNING, "Failed to connect to server: " + status.error_message());
+    return IReply{status, FAILURE_INVALID};
+  }
+
+  log(INFO, "[Login]: retrieved server info...connecting to server at " 
+    + server_info.hostname() + ":" + server_info.port());
+  
+  return ServerLogin();
 }
 
 // Timeline Command
@@ -303,16 +386,20 @@ void Client::Timeline(const std::string& username) {
   // and you can terminate the client program by pressing
   // CTRL-C (SIGINT)
   // ------------------------------------------------------------
-  std::cout << "Command completed successfully\n";
-  std::cout << "Now you are in the timeline\n";
-
   ClientContext context;
   std::shared_ptr<ClientReaderWriter<Message, Message>> stream(
-      stub_->Timeline(&context));
+      server_stub_->Timeline(&context));
 
   // Write initial message to identify user
   Message init_m = MakeMessage(username, "");
-  stream->Write(init_m);
+  // Return error if request fails
+  if (!stream->Write(init_m)) {
+    log(WARNING, "[Timeline]: request failed");
+    return;
+  }
+  log(INFO, "[Timeline]: stream created successfully");
+  std::cout << "Command completed successfully\n";
+  std::cout << "Now you are in the timeline\n";
 
   // Start thread for reading incoming messages
   std::thread reader([&]() {
@@ -341,10 +428,9 @@ void Client::Timeline(const std::string& username) {
 
   Status status = stream->Finish();
   if (!status.ok()) {
-      std::cerr << "Timeline RPC failed." << std::endl;
+      std::cerr << "Timeline RPC failed" << std::endl;
   }
 }
-
 
 
 //////////////////////////////////////////////
@@ -352,27 +438,29 @@ void Client::Timeline(const std::string& username) {
 /////////////////////////////////////////////
 int main(int argc, char** argv) {
 
-  std::string hostname = "localhost";
-  std::string username = "default";
-  std::string port = "3010";
+  std::string coordinatorIP = "localhost";
+  std::string coordinatorPort = "9090";
+  std::string userId = "1";
     
   int opt = 0;
-  while ((opt = getopt(argc, argv, "h:u:p:")) != -1){
+  while ((opt = getopt(argc, argv, "h:k:u:")) != -1){
     switch(opt) {
     case 'h':
-      hostname = optarg;break;
+      coordinatorIP = optarg;break;
+    case 'k':
+      coordinatorPort = optarg;break;
     case 'u':
-      username = optarg;break;
-    case 'p':
-      port = optarg;break;
+      userId = optarg;break;
     default:
       std::cout << "Invalid Command Line Argument\n";
     }
   }
       
-  std::cout << "Logging Initialized. Client starting...";
+  std::string log_file_name = std::string("client-") + userId;
+  google::InitGoogleLogging(log_file_name.c_str());
+  log(INFO, "Logging Initialized. Client starting...");
   
-  Client myc(hostname, username, port);
+  Client myc(coordinatorIP, coordinatorPort, userId);
   
   myc.run();
   
