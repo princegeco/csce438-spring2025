@@ -50,9 +50,9 @@ You can visit the RabbitMQ Management Plugin UI at http://localhost:15672/ on yo
 
 The management UI is very useful and is implemented as a single page application which relies on the HTTP API. Some of the features include: Declare, list and delete exchanges, queues, bindings, users, virtual hosts and user permissions.
 
-# 3. try compiling and using coordinator:
+# 3. try compiling and using provided synchronizer:
 
-In the `mp2_2` folder of `csce438_mp2_2_container`, compile the code (provided MP2.2 coordinator + provided MP2.2 synchronizer + your MP2.1) using the provided mp2.2 makefile:
+In the `mp2_2` folder of `csce438_mp2_2_container`, compile the code (provided MP2.2 synchronizer + your MP2.1) using the provided mp2.2 makefile:
 
     make -j4
 
