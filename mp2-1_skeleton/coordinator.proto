@@ -25,7 +25,6 @@ message ServerInfo{
     string port = 3;
     string type = 4;
 }
-// TODO: check which extra stuff in the coordinator.proto you dont need
 
 //confirmation message definition
 message Confirmation{
