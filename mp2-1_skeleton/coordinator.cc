@@ -142,7 +142,6 @@ void checkHeartbeat(){
     while(true){
         //check servers for heartbeat > 10
         //if true turn missed heartbeat = true
-        // Your code below
 
         v_mutex.lock();
 
