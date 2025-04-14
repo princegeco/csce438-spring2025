@@ -14,4 +14,4 @@ pkill -f "./tsc"
 
 pkill -f "./synchronizer"
 
-# rm -rf cluster_*
+rm -rf cluster_*

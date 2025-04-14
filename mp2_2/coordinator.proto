@@ -17,12 +17,13 @@ service CoordService{
     /* // ZooKeeper API here */
     /* // Create a path and place data in the znode */
     /* rpc create (PathAndData) returns (Status) {} */
-    /* // Check if a path exists (checking if a Master is elected */
+    /* // Check if a path exists (checking if a Master is elected) */
     /* rpc exists (Path) returns (Status) {} */
 
     rpc GetAllFollowerServers (ID) returns (ServerList) {}
     rpc GetFollowerServer (ID) returns (ServerInfo) {}
 
+    rpc GetUsersOnCluster (ID) returns (AllUsers) {} // added 
 }
 
 //server info message definition
